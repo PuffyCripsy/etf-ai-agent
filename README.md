@@ -2,7 +2,7 @@
 
 KODEX 200 ETF 시계열 데이터를 분석하고, 데이터에 근거한 AI 채팅을 제공하는 웹 서비스 개발 프로젝트입니다.
 
-> **개발 진행 중** — 아래의 구현 현황은 이전 로컬 테스트를 기준으로 하며, GitHub에 모든 코드가 업로드되거나 배포된 상태를 뜻하지 않습니다.
+> **배포 완료** — 아래의 구현 현황은 실제 배포된 서비스 기준이며, 기능 시연 스크린샷은 배포 사이트에서 캡처했습니다.
 
 ## 프로젝트 목표
 
@@ -34,9 +34,9 @@ KODEX 200 ETF 시계열 데이터를 분석하고, 데이터에 근거한 AI 채
 | FastAPI 서버와 Swagger `/docs` | ✅ 로컬 테스트 | 기존 API 경로를 과제 규격으로 정리 예정 |
 | CSV 기반 데이터 CRUD | ✅ 로컬 테스트 | Firestore 전환 필요 |
 | GPT API 채팅 | ✅ 로컬 테스트 | 응답 정확도 및 자동 저장 개선 필요 |
-| Firestore 데이터/대화 관리 | ⬜ 미완료 | 필수 |
-| 순수 JS 프론트엔드 | ⬜ 미완료 | 필수 |
-| Render/Vercel 배포 | ⬜ 미완료 | 필수 |
+| Firestore 데이터/대화 관리 | ✅ 완료 | 필수 |
+| 순수 JS 프론트엔드 | ✅ 완료 | 필수 |
+| Render/Vercel 배포 | ✅ 완료 | 필수 |
 
 ## 필수 API 명세 (구현 목표)
 
@@ -110,21 +110,49 @@ API_BASE_URL=http://127.0.0.1:8000
 
 | 서비스 | URL |
 | --- | --- |
-| Frontend (Vercel) | 미배포 |
-| Backend (Render) | 미배포 |
-| Swagger UI | 미배포 |
+| Frontend (Vercel) | <https://etf-ai-agent-etffrontend.vercel.app> |
+| Backend (Render) | <https://etf-ai-agent-4lle.onrender.com> |
+| Swagger UI | <https://etf-ai-agent-4lle.onrender.com/docs> |
+
+## 기능 시연 스크린샷
+
+배포된 사이트에서 캡처한 실제 동작 화면입니다.
+
+### 1. 데이터 기반 AI 채팅
+
+통계 요약을 시스템 프롬프트에 주입한 AI 답변 (데이터 432건 기준 평균·최고가·추세).
+
+![AI 채팅](./docs/screenshots/01_ai_chat.png)
+
+### 2. 시계열 데이터 CRUD
+
+날짜 `2026-11-01`, 값 `95000`, 메모 `11월 관측 데이터` 등록 → 목록에 새 행 추가 및 통계 갱신(433건).
+
+![데이터 CRUD](./docs/screenshots/02_data_crud.png)
+
+### 3. 대화 관리
+
+Firestore에 자동 저장된 대화 목록에서 이전 대화 불러오기.
+
+![대화 관리](./docs/screenshots/03_conversations.png)
+
+### 4. Swagger UI
+
+Render에 배포된 백엔드의 `/docs` API 명세.
+
+![Swagger UI](./docs/screenshots/04_swagger_docs.png)
 
 ## 필수 시연 및 제출 체크리스트
 
-- [ ] Firestore에 ETF 시계열 데이터 100개 이상 저장
-- [ ] 데이터 등록/조회/수정/삭제 시연
-- [ ] 통계 요약 API 및 화면 시연
-- [ ] AI 채팅의 로딩 표시 및 실제 데이터 요약 활용 확인
-- [ ] 대화 자동 저장 및 이전 대화 불러오기 시연
-- [ ] Render 백엔드 배포 및 `/docs` 접속 확인
-- [ ] Vercel 프론트엔드 배포 및 API 연동 확인
-- [ ] 배포 URL 및 로컬 실행 안내 기재
-- [ ] 채팅·CRUD·대화 기록 스크린샷 첨부
+- [x] Firestore에 ETF 시계열 데이터 100개 이상 저장
+- [x] 데이터 등록/조회/수정/삭제 시연
+- [x] 통계 요약 API 및 화면 시연
+- [x] AI 채팅의 로딩 표시 및 실제 데이터 요약 활용 확인
+- [x] 대화 자동 저장 및 이전 대화 불러오기 시연
+- [x] Render 백엔드 배포 및 `/docs` 접속 확인
+- [x] Vercel 프론트엔드 배포 및 API 연동 확인
+- [x] 배포 URL 및 로컬 실행 안내 기재
+- [x] 채팅·CRUD·대화 기록 스크린샷 첨부
 
 ## 요구사항 원문 정리
 
