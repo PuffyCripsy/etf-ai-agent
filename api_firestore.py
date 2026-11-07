@@ -1,4 +1,4 @@
-﻿"""ETF AI Agent: Firestore-backed FastAPI service.
+"""ETF AI Agent: Firestore-backed FastAPI service.
 
 Run from the project folder:
     python -m uvicorn api_firestore:app --reload
@@ -62,7 +62,7 @@ class ChatRequest(BaseModel):
 
 
 class ConversationRequest(BaseModel):
-    title: str = Field(default='?????, min_length=1, max_length=100)
+    title: str = Field(default='새 대화', min_length=1, max_length=100)
 
 
 def _all_records() -> list[dict[str, Any]]:
@@ -77,16 +77,16 @@ def _all_records() -> list[dict[str, Any]]:
 
 def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
     if not rows:
-        return {'period': {'start': None, 'end': None}, 'count': 0, 'metrics': {'average': None, 'max': None, 'min': None}, 'trend': '?곗씠???놁쓬'}
+        return {'period': {'start': None, 'end': None}, 'count': 0, 'metrics': {'average': None, 'max': None, 'min': None}, 'trend': '데이터 없음'}
     vals = [float(r['value']) for r in rows]
     n = len(vals)
     window = min(20, n // 2)
     if window:
         latest = sum(vals[-window:]) / window
         earlier = sum(vals[-window * 2:-window]) / window
-        trend = '利앷?' if latest > earlier else '媛먯냼' if latest < earlier else '蹂???놁쓬'
+        trend = '증가' if latest > earlier else '감소' if latest < earlier else '변화 없음'
     else:
-        trend = '鍮꾧탳???곗씠??遺議?
+        trend = '비교할 데이터 부족'
     return {
         'etf': 'KODEX 200',
         'period': {'start': str(rows[0]['date']), 'end': str(rows[-1]['date'])},
@@ -116,7 +116,7 @@ def get_data_summary():
 def add_data(record: ETFRecord):
     ref = get_db().collection('data').document(record.date.isoformat())
     if ref.get().exists:
-        raise HTTPException(409, '?대떦 ?좎쭨???곗씠?곌? ?대? ?덉뒿?덈떎.')
+        raise HTTPException(409, '해당 날짜의 데이터가 이미 있습니다.')
     data = record.model_dump(mode='json')
     ref.set(data)
     return {'id': ref.id, **data}
@@ -126,13 +126,13 @@ def add_data(record: ETFRecord):
 def update_data(id: str, record: ETFUpdate):
     ref = get_db().collection('data').document(id)
     if not ref.get().exists:
-        raise HTTPException(404, '?대떦 ?곗씠?곌? ?놁뒿?덈떎.')
+        raise HTTPException(404, '해당 데이터가 없습니다.')
     new_id = record.date.isoformat()
     data = record.model_dump(mode='json')
     if id != new_id:
         new_ref = get_db().collection('data').document(new_id)
         if new_ref.get().exists:
-            raise HTTPException(409, '蹂寃쏀븷 ?좎쭨???곗씠?곌? ?대? ?덉뒿?덈떎.')
+            raise HTTPException(409, '변경할 날짜의 데이터가 이미 있습니다.')
         batch = get_db().batch()
         batch.set(new_ref, data)
         batch.delete(ref)
@@ -146,7 +146,7 @@ def update_data(id: str, record: ETFUpdate):
 def delete_data(id: str):
     ref = get_db().collection('data').document(id)
     if not ref.get().exists:
-        raise HTTPException(404, '?대떦 ?곗씠?곌? ?놁뒿?덈떎.')
+        raise HTTPException(404, '해당 데이터가 없습니다.')
     ref.delete()
     return {'deleted': id}
 
@@ -171,7 +171,7 @@ def list_conversations():
 def get_conversation(id: str):
     doc = get_db().collection('conversations').document(id).get()
     if not doc.exists:
-        raise HTTPException(404, '??붾? 李얠쓣 ???놁뒿?덈떎.')
+        raise HTTPException(404, '대화를 찾을 수 없습니다.')
     return {'id': doc.id, **doc.to_dict()}
 
 
@@ -179,7 +179,7 @@ def get_conversation(id: str):
 def delete_conversation(id: str):
     ref = get_db().collection('conversations').document(id)
     if not ref.get().exists:
-        raise HTTPException(404, '??붾? 李얠쓣 ???놁뒿?덈떎.')
+        raise HTTPException(404, '대화를 찾을 수 없습니다.')
     ref.delete()
     return {'deleted': id}
 
@@ -188,25 +188,25 @@ def delete_conversation(id: str):
 def chat(req: ChatRequest):
     summary = _summary(_all_records())
     if summary['count'] == 0:
-        raise HTTPException(400, '癒쇱? ETF ?곗씠?곕? ?깅줉??二쇱꽭??')
+        raise HTTPException(400, '먼저 ETF 데이터를 등록해 주세요.')
     api_key = os.getenv('OPENAI_API_KEY')
     if not api_key:
-        raise HTTPException(503, 'OPENAI_API_KEY媛 ?ㅼ젙?섏? ?딆븯?듬땲??')
+        raise HTTPException(503, 'OPENAI_API_KEY가 설정되지 않았습니다.')
     db = get_db()
     ref = db.collection('conversations').document(req.conversation_id) if req.conversation_id else db.collection('conversations').document()
     snapshot = ref.get() if req.conversation_id else None
     if req.conversation_id and not snapshot.exists:
-        raise HTTPException(404, '湲곗〈 ??붾? 李얠쓣 ???놁뒿?덈떎.')
+        raise HTTPException(404, '기존 대화를 찾을 수 없습니다.')
     prev = (snapshot.to_dict() or {}).get('messages', []) if snapshot else []
     # Keep the API call small, without losing stored conversation history.
     recent = [m for m in prev[-8:] if m.get('role') in ('user', 'assistant')]
     system_message = (
-        '?뱀떊? KODEX 200 ETF ?쒓퀎???곗씠?곕? ?ㅻ챸?섎뒗 AI?낅땲?? '
-        '?꾨옒???쒓났???듦퀎留??뺤씤???ъ떎濡??ъ슜?섏꽭?? '
-        '?붿빟???녿뒗 ?좎쭨蹂?媛寃? 嫄곕옒?? ?섏씡瑜? 誘몃옒 媛寃⑹쓣 留뚮뱾???댁? 留덉꽭?? '
-        '異붽? ?곗씠?곌? ?꾩슂??吏덈Ц? ?뺤씤?????녿떎怨??듯븯?몄슂. '
-        '?ъ옄 ?섏씡??蹂댁옣?섏? 留덉꽭??\n'
-        f'?뺤씤???듦퀎: {summary}'
+        '당신은 KODEX 200 ETF 시계열 데이터를 설명하는 AI입니다. '
+        '아래에 제공한 통계만 확인된 사실로 사용하세요. '
+        '요약에 없는 날짜별 가격, 거래량, 수익률, 미래 가격을 만들어 내지 마세요. '
+        '추가 데이터가 필요한 질문은 확인할 수 없다고 답하세요. '
+        '투자 수익을 보장하지 마세요.\n'
+        f'확인된 통계: {summary}'
     )
     messages = [{'role': 'system', 'content': system_message}]
     messages.extend({'role': m['role'], 'content': m['content']} for m in recent)
@@ -218,9 +218,9 @@ def chat(req: ChatRequest):
             messages=messages,
             max_completion_tokens=2000,
         )
-        answer = response.choices[0].message.content or '?듬????앹꽦?섏? 紐삵뻽?듬땲??'
+        answer = response.choices[0].message.content or '답변을 생성하지 못했습니다.'
     except Exception as e:
-        raise HTTPException(502, f'AI API ?몄텧 ?ㅽ뙣: {type(e).__name__}') from e
+        raise HTTPException(502, f'AI API 호출 실패: {type(e).__name__}') from e
     now = datetime.now(timezone.utc).isoformat()
     full_messages = prev + [{'role': 'user', 'content': req.question}, {'role': 'assistant', 'content': answer}]
     original = snapshot.to_dict() if snapshot else {}
@@ -231,4 +231,3 @@ def chat(req: ChatRequest):
         'messages': full_messages,
     })
     return {'answer': answer, 'conversation_id': ref.id, 'summary': summary}
-
