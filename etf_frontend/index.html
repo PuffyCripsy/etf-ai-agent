@@ -22,6 +22,9 @@ button.secondary{background:#e9eff8;color:#234469}button.danger{background:#fee6
 .chatlogs{height:325px;overflow-y:auto;border:1px solid #e3e9f2;background:#f8faff;border-radius:12px;padding:13px;display:flex;flex-direction:column;gap:12px}
 .bubble{max-width:92%;padding:12px;border-radius:12px;white-space:pre-wrap;line-height:1.6;font-size:14px;overflow-wrap:anywhere}
 .bubble.user{background:#215fc8;color:white;align-self:flex-end}.bubble.assistant{background:#fff;border:1px solid #d9e3ef;align-self:flex-start}
+.bubble.loading{background:#f1f5f9;color:#64748b;font-style:italic;display:flex;align-items:center;gap:8px}
+.spinner{width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:#215fc8;border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
 .chatbar{display:flex;gap:9px;margin-top:12px}.chatbar input{flex:1}.loading{color:#64748b;font-size:13px;margin-top:8px}
 .history{margin-top:18px}.conversation-item{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #eff2f6}
 .conversation-item button:first-child{flex:1;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -78,7 +81,7 @@ async function request(path,options={}){
   if(!response.ok){const msg=payload?.detail;throw new Error(typeof msg==="string"?msg:JSON.stringify(msg||{})||`HTTP ${response.status}`);}
   return payload;
 }
-function bubble(role,message){const el=document.createElement("div");el.className="bubble "+(role==="user"?"user":"assistant");text(el,message);$("chatlogs").append(el);$("chatlogs").scrollTop=$("chatlogs").scrollHeight;}
+function bubble(role,message,className=""){const el=document.createElement("div");el.className="bubble "+(role==="user"?"user":"assistant")+(className?" "+className:"");text(el,message);$("chatlogs").append(el);$("chatlogs").scrollTop=$("chatlogs").scrollHeight;return el;}
 function showConversation(items){$("chatlogs").replaceChildren();if(!items.length)bubble("assistant","새 대화를 시작해 보세요.");else items.forEach(item=>bubble(item.role,item.content));}
 function drawRows(){
   const target=$("rows");target.replaceChildren();text($("rowCount"),`${state.records.length}건`);
@@ -118,8 +121,25 @@ async function deleteRecord(record){if(!confirm(`${record.date} 데이터를 삭
 $("chatForm").onsubmit=async event=>{
   event.preventDefault();if(state.busy)return;const question=$("question").value.trim();if(!question)return;
   state.busy=true;$("send").disabled=true;text($("loading"),"AI 답변을 생성하는 중입니다...");bubble("user",question);$("question").value="";
-  try{const result=await request("/api/chat",{method:"POST",body:JSON.stringify({question,conversation_id:state.conversationId})});state.conversationId=result.conversation_id;bubble("assistant",result.answer);await loadHistory();}
-  catch(e){bubble("assistant","오류: "+e.message);}finally{state.busy=false;$("send").disabled=false;text($("loading"),"");}
+  const loadingBubble=bubble("assistant","AI 답변을 작성하고 있습니다...","loading");
+  const spinner=document.createElement("span");spinner.className="spinner";loadingBubble.prepend(spinner);
+  try{
+    const result=await request("/api/chat",{method:"POST",body:JSON.stringify({question,conversation_id:state.conversationId})});
+    state.conversationId=result.conversation_id;
+    loadingBubble.className="bubble assistant";
+    loadingBubble.replaceChildren();
+    text(loadingBubble,result.answer);
+    await loadHistory();
+  }
+  catch(e){
+    loadingBubble.className="bubble assistant";
+    loadingBubble.replaceChildren();
+    text(loadingBubble,"오류: "+e.message);
+  }
+  finally{
+    state.busy=false;$("send").disabled=false;text($("loading"),"");
+    $("chatlogs").scrollTop=$("chatlogs").scrollHeight;
+  }
 };
 refresh();
 </script></body></html>
