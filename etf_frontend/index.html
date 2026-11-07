@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETF AI Agent | KODEX 200</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Malgun Gothic",sans-serif;color:#18283e;background:#f3f6fa;font-synthesis:none}
+*{box-sizing:border-box}body{margin:0}.shell{max-width:1200px;margin:auto;padding:28px 22px 60px}
+header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+h1{margin:0;font-size:29px;letter-spacing:-.8px}h2{font-size:18px;margin:0 0 14px}p{margin:6px 0}
+.subtitle,.muted{color:#64748b;font-size:13px}.badge{background:#e0f4ed;color:#147d59;padding:7px 12px;border-radius:50px;font-size:12px;font-weight:700}
+.card{background:#fff;border:1px solid #e3e9f2;border-radius:18px;padding:20px;box-shadow:0 3px 12px rgba(20,35,60,.035)}
+.settings{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:16px}.settings label{font-size:13px;font-weight:650}.settings input{flex:1;min-width:235px}
+input,textarea,button{font:inherit}input,textarea{border:1px solid #cdd7e4;border-radius:10px;padding:10px 11px;min-width:0;max-width:100%;background:#fff;color:#17283d}
+input:focus,textarea:focus{outline:2px solid #91bdff;outline-offset:1px}
+button{border:0;border-radius:10px;padding:10px 14px;background:#215fc8;color:#fff;cursor:pointer;font-weight:650;font-size:13px}
+button:hover{filter:brightness(.93)}button:disabled{opacity:.5;cursor:not-allowed}
+button.secondary{background:#e9eff8;color:#234469}button.danger{background:#fee6e6;color:#a82424}button.small{padding:6px 9px;font-size:12px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:16px}.stat{padding:18px}.stat b{display:block;font-size:24px;letter-spacing:-.5px;margin-top:7px}
+.cols{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(320px,1fr);gap:16px;align-items:start}
+.chatlogs{height:325px;overflow-y:auto;border:1px solid #e3e9f2;background:#f8faff;border-radius:12px;padding:13px;display:flex;flex-direction:column;gap:12px}
+.bubble{max-width:92%;padding:12px;border-radius:12px;white-space:pre-wrap;line-height:1.6;font-size:14px;overflow-wrap:anywhere}
+.bubble.user{background:#215fc8;color:white;align-self:flex-end}.bubble.assistant{background:#fff;border:1px solid #d9e3ef;align-self:flex-start}
+.chatbar{display:flex;gap:9px;margin-top:12px}.chatbar input{flex:1}.loading{color:#64748b;font-size:13px;margin-top:8px}
+.history{margin-top:18px}.conversation-item{display:flex;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid #eff2f6}
+.conversation-item button:first-child{flex:1;text-align:left;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.record-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}.record-form label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#52647e}
+.record-form label.wide{grid-column:1/-1}.record-form input{width:100%}.actions{display:flex;gap:8px;margin-top:12px}
+.table-wrap{overflow:auto;max-height:385px;margin-top:15px;border:1px solid #e4eaf2;border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:9px;text-align:left;border-bottom:1px solid #edf0f5;white-space:nowrap}th{position:sticky;top:0;background:#f4f7fb}
+td.memo{max-width:140px;overflow:hidden;text-overflow:ellipsis}.notice{font-size:13px;margin:12px 0;min-height:18px}.notice.error{color:#b91c1c}.notice.ok{color:#117751}
+.foot{margin-top:18px;color:#68778b;font-size:12px}
+@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}.shell{padding:18px 12px}.stat b{font-size:20px}}
+</style>
+</head>
+<body><main class="shell">
+<header><div><h1>ETF AI Agent</h1><p class="subtitle">KODEX 200 · Firestore 데이터 분석 및 AI 대화</p></div><span class="badge" id="status">서버 연결 확인 전</span></header>
+<section class="card settings"><label for="base">백엔드 API 주소</label><input id="base" type="url" aria-label="백엔드 API 주소"><button id="connect">연결·새로고침</button><span class="muted">API 키는 이 화면에 입력하지 않습니다.</span></section>
+<div class="stats">
+  <section class="card stat"><span class="muted">데이터 수</span><b id="count">—</b></section>
+  <section class="card stat"><span class="muted">평균 가격</span><b id="average">—</b></section>
+  <section class="card stat"><span class="muted">최고 가격</span><b id="maximum">—</b></section>
+  <section class="card stat"><span class="muted">최근 추세</span><b id="trend">—</b></section>
+</div>
+<div class="cols">
+<section class="card"><h2>AI에게 ETF 데이터 질문하기</h2>
+<p class="muted" id="period">분석 기간을 불러오는 중...</p>
+<div id="chatlogs" class="chatlogs" aria-live="polite"><div class="bubble assistant">안녕하세요. KODEX 200 데이터에 관해 질문해 주세요.</div></div>
+<form id="chatForm" class="chatbar"><input id="question" placeholder="예: 데이터 평균과 최고가는 얼마인가요?" maxlength="2000" required><button id="send" type="submit">전송</button></form>
+<div class="loading" id="loading" role="status" aria-live="polite"></div>
+<div class="history"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h2>대화 기록</h2><button class="secondary small" id="newChat">새 대화</button></div><div id="conversations"><p class="muted">불러오는 중...</p></div></div>
+</section>
+<section class="card"><h2>ETF 데이터 관리</h2><p class="muted">추가·조회·수정·삭제 (CRUD)</p>
+<form id="recordForm"><div class="record-form">
+<label>날짜<input type="date" id="date" required></label>
+<label>가격 (원)<input type="number" id="value" min="0.01" step="0.01" required></label>
+<label class="wide">메모<input id="memo" maxlength="500" placeholder="예: KODEX 200 종가"></label>
+</div><div class="actions"><button type="submit" id="saveRecord">데이터 추가</button><button type="button" class="secondary" id="cancelEdit" hidden>수정 취소</button></div></form>
+<div id="notice" class="notice" role="status"></div>
+<div style="display:flex;justify-content:space-between;align-items:center"><h2 style="margin:10px 0">데이터 목록</h2><span id="rowCount" class="muted"></span></div>
+<div class="table-wrap"><table><thead><tr><th>날짜</th><th>가격</th><th>메모</th><th>관리</th></tr></thead><tbody id="rows"><tr><td colspan="4">불러오는 중...</td></tr></tbody></table></div>
+</section></div>
+<p class="foot">데이터는 Firebase Firestore에 저장됩니다. 학습·과제용 서비스이며 투자 조언이나 수익 보장을 제공하지 않습니다.</p>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const money=n=>typeof n==="number"&&Number.isFinite(n)?n.toLocaleString("ko-KR",{maximumFractionDigits:2})+"원":"—";
+const state={records:[],conversationId:null,editingId:null,busy:false};
+$("base").value=localStorage.getItem("etf_api_base")||"http://127.0.0.1:8000";
+function base(){return $("base").value.trim().replace(/\/+$/,"");}
+function text(node,value){node.textContent=String(value??"");}
+function notice(message,error=false){text($("notice"),message);$("notice").className="notice "+(error?"error":"ok");}
+async function request(path,options={}){
+  const response=await fetch(base()+path,{...options,headers:{"Content-Type":"application/json",...(options.headers||{})}});
+  let payload;try{payload=await response.json();}catch{payload=null;}
+  if(!response.ok){const msg=payload?.detail;throw new Error(typeof msg==="string"?msg:JSON.stringify(msg||{})||`HTTP ${response.status}`);}
+  return payload;
+}
+function bubble(role,message){const el=document.createElement("div");el.className="bubble "+(role==="user"?"user":"assistant");text(el,message);$("chatlogs").append(el);$("chatlogs").scrollTop=$("chatlogs").scrollHeight;}
+function showConversation(items){$("chatlogs").replaceChildren();if(!items.length)bubble("assistant","새 대화를 시작해 보세요.");else items.forEach(item=>bubble(item.role,item.content));}
+function drawRows(){
+  const target=$("rows");target.replaceChildren();text($("rowCount"),`${state.records.length}건`);
+  if(!state.records.length){const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=4;text(td,"데이터 없음");tr.append(td);target.append(tr);return;}
+  for(const record of [...state.records].sort((a,b)=>String(b.date).localeCompare(String(a.date)))){
+    const tr=document.createElement("tr");
+    for(const value of [record.date,money(Number(record.value)),record.memo||""]){const td=document.createElement("td");td.textContent=value;td.className=value===record.memo?"memo":"";td.title=value;tr.append(td);}
+    const td=document.createElement("td");
+    const edit=document.createElement("button");edit.className="small secondary";text(edit,"수정");edit.onclick=()=>{state.editingId=record.id;$("date").value=record.date;$("value").value=record.value;$("memo").value=record.memo||"";text($("saveRecord"),"수정 저장");$("cancelEdit").hidden=false;$("date").focus();};
+    const del=document.createElement("button");del.className="small danger";del.style.marginLeft="5px";text(del,"삭제");del.onclick=()=>deleteRecord(record);
+    td.append(edit,del);tr.append(td);target.append(tr);
+  }
+}
+async function loadStats(){const s=await request("/api/data/summary");text($("count"),(s.count??0).toLocaleString("ko-KR")+"건");text($("average"),money(s.metrics?.average));text($("maximum"),money(s.metrics?.max));text($("trend"),s.trend||"—");text($("period"),`분석 기간: ${s.period?.start||"—"} ~ ${s.period?.end||"—"}`);}
+async function loadRows(){state.records=await request("/api/data");drawRows();}
+async function loadHistory(){const list=await request("/api/conversations");const root=$("conversations");root.replaceChildren();if(!list.length){const p=document.createElement("p");p.className="muted";text(p,"저장된 대화 없음");root.append(p);return;}
+  for(const item of list){const wrap=document.createElement("div");wrap.className="conversation-item";
+    const open=document.createElement("button");open.className="secondary small";text(open,item.title||"대화");open.title=item.title||"대화";open.onclick=async()=>{try{const c=await request("/api/conversations/"+encodeURIComponent(item.id));state.conversationId=c.id;showConversation(c.messages||[]);}catch(e){alert("대화 불러오기 실패: "+e.message);}};
+    const del=document.createElement("button");del.className="danger small";text(del,"삭제");del.setAttribute("aria-label","대화 삭제");del.onclick=async()=>{if(!confirm("이 대화를 삭제할까요?"))return;try{await request("/api/conversations/"+encodeURIComponent(item.id),{method:"DELETE"});if(state.conversationId===item.id){state.conversationId=null;showConversation([]);}await loadHistory();}catch(e){alert("대화 삭제 실패: "+e.message);}};
+    wrap.append(open,del);root.append(wrap);
+  }
+}
+async function refresh(){localStorage.setItem("etf_api_base",base());text($("status"),"연결 중...");try{await Promise.all([loadStats(),loadRows(),loadHistory()]);text($("status"),"서버 연결됨");notice("");}catch(e){text($("status"),"연결 실패");notice("서버 연결 실패: "+e.message,true);}}
+$("connect").onclick=refresh;
+$("newChat").onclick=()=>{state.conversationId=null;showConversation([]);};
+$("cancelEdit").onclick=()=>{state.editingId=null;$("recordForm").reset();text($("saveRecord"),"데이터 추가");$("cancelEdit").hidden=true;};
+$("recordForm").onsubmit=async event=>{
+  event.preventDefault();
+  const record={date:$("date").value,value:Number($("value").value),memo:$("memo").value.trim()};
+  if(!record.date||!Number.isFinite(record.value)||record.value<=0){notice("날짜와 0보다 큰 가격을 입력해 주세요.",true);return;}
+  const editing=state.editingId;const btn=$("saveRecord");btn.disabled=true;
+  try{await request(editing?"/api/data/"+encodeURIComponent(editing):"/api/data",{method:editing?"PUT":"POST",body:JSON.stringify(record)});
+    $("cancelEdit").click();await Promise.all([loadRows(),loadStats()]);notice(editing?"수정 완료":"추가 완료");}
+  catch(e){notice("저장 실패: "+e.message,true);}finally{btn.disabled=false;}
+};
+async function deleteRecord(record){if(!confirm(`${record.date} 데이터를 삭제하시겠습니까?`))return;try{await request("/api/data/"+encodeURIComponent(record.id),{method:"DELETE"});await Promise.all([loadRows(),loadStats()]);notice("삭제 완료");}catch(e){notice("삭제 실패: "+e.message,true);}}
+$("chatForm").onsubmit=async event=>{
+  event.preventDefault();if(state.busy)return;const question=$("question").value.trim();if(!question)return;
+  state.busy=true;$("send").disabled=true;text($("loading"),"AI 답변을 생성하는 중입니다...");bubble("user",question);$("question").value="";
+  try{const result=await request("/api/chat",{method:"POST",body:JSON.stringify({question,conversation_id:state.conversationId})});state.conversationId=result.conversation_id;bubble("assistant",result.answer);await loadHistory();}
+  catch(e){bubble("assistant","오류: "+e.message);}finally{state.busy=false;$("send").disabled=false;text($("loading"),"");}
+};
+refresh();
+</script></body></html>
